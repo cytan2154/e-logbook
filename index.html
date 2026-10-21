@@ -64,10 +64,38 @@
                         </div>
                     </div>
                 </div>
+                
                 <textarea id="tasks" placeholder="1. Duties assigned and tasks completed" class="w-full p-2 border rounded mb-4 h-24" required></textarea>
                 <textarea id="reflection" placeholder="2. Learning reflection" class="w-full p-2 border rounded mb-4 h-24" required></textarea>
                 <textarea id="challenges" placeholder="3. Challenges and solutions" class="w-full p-2 border rounded mb-4 h-24" required></textarea>
-                <textarea id="skills" placeholder="4. Skills developed (Technical, communication, problem-solving, etc.)" class="w-full p-2 border rounded mb-6 h-20" required></textarea>
+                
+                <!-- Skills Checklist with 'Other' Validation -->
+                <label class="block text-sm font-medium mb-2">4. Skills developed (Select all that apply)</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 border p-4 rounded bg-gray-50">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="skills" value="Technical / professional skills" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <span class="text-sm font-medium text-gray-700">Technical / professional skills</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="skills" value="Communication and teamwork" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <span class="text-sm font-medium text-gray-700">Communication and teamwork</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="skills" value="Problem-solving and critical thinking" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <span class="text-sm font-medium text-gray-700">Problem-solving and critical thinking</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" name="skills" value="Professional ethics and responsibility" class="w-5 h-5 text-blue-600 rounded cursor-pointer">
+                        <span class="text-sm font-medium text-gray-700">Professional ethics and responsibility</span>
+                    </label>
+                    <div class="flex flex-col space-y-2 md:col-span-2">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="skills-other-checkbox" class="w-5 h-5 text-blue-600 rounded cursor-pointer" onchange="toggleOtherSkill()">
+                            <span class="text-sm font-medium text-gray-700">Other (Please specify)</span>
+                        </label>
+                        <input type="text" id="skills-other-text" placeholder="Type custom skill here..." class="hidden w-full p-2 border rounded text-sm outline-blue-500">
+                    </div>
+                </div>
                 
                 <div class="flex gap-2 mt-2">
                     <button type="button" onclick="saveDraft()" class="flex-1 bg-gray-500 text-white p-3 rounded font-bold hover:bg-gray-600">Save Draft</button>
@@ -106,16 +134,12 @@
                 <h2 class="text-xl font-semibold">Cohort Monitoring Dashboard</h2>
                 <button onclick="logout()" class="text-sm text-red-500 underline">Logout</button>
             </div>
-            
-            <div class="grid grid-cols-3 gap-4 mb-6" id="lecturer-summary">
-                <!-- Summary cards injected here -->
-            </div>
-
+            <div class="grid grid-cols-3 gap-4 mb-6" id="lecturer-summary"></div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-200">
-                            <th class="p-2 border">Student Email</th>
+                            <th class="p-2 border">Student</th>
                             <th class="p-2 border text-center">Total Logs</th>
                             <th class="p-2 border text-center text-green-600">Approved</th>
                             <th class="p-2 border text-center text-blue-600">Pending</th>
@@ -129,7 +153,7 @@
             </div>
         </div>
 
-    </div> <!-- End Container -->
+    </div>
 
     <!-- ================= REVIEW MODAL ================= -->
     <div id="review-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -151,27 +175,16 @@
 
     <!-- ================= SCRIPT LOGIC ================= -->
     <script>
-        // REPLACE WITH YOUR PUBLISHED APPS SCRIPT WEB APP URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoOrQuFPz1SCH1fu5kvhwyt3Njs0WgzToGwKN7wtmN-Jl6mRTxpB_fMLkmclwq5eaQlg/exec"; 
         
         let currentLogs = [];
         let activeLogId = null;
 
-        // PWA Service Worker Registration
+        // PWA Registration & Network Status
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .catch(err => console.error('Service Worker registration failed', err));
-            });
+            window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)));
         }
-
-        // Offline / Online Detection and Initialization
-        window.addEventListener('load', () => {
-            updateOnlineStatus();
-            checkPendingSync();
-            checkExistingDrafts();
-            if(localStorage.getItem("sessionToken")) showDashboard(localStorage.getItem("userRole"));
-        });
+        window.addEventListener('load', () => { updateOnlineStatus(); checkPendingSync(); checkExistingDrafts(); if(localStorage.getItem("sessionToken")) showDashboard(localStorage.getItem("userRole")); });
         window.addEventListener('online', () => { updateOnlineStatus(); syncPendingLogs(); });
         window.addEventListener('offline', updateOnlineStatus);
 
@@ -187,13 +200,8 @@
             }
         }
 
-        // Core API function
         async function apiCall(payload) {
-            const response = await fetch(GAS_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(payload)
-            });
+            const response = await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
             return response.json();
         }
 
@@ -219,7 +227,7 @@
             if (res.success) {
                 localStorage.setItem("sessionToken", res.token);
                 localStorage.setItem("userRole", res.role);
-                localStorage.setItem("userEmail", res.email);
+                localStorage.setItem("userEmail", email);
                 showDashboard(res.role);
             } else document.getElementById("login-msg").innerText = res.message;
         }
@@ -228,31 +236,52 @@
 
         function showDashboard(role) {
             document.getElementById("login-section").classList.add("hidden");
-            if (role === "Student") {
-                document.getElementById("student-section").classList.remove("hidden");
-            } else if (role === "Industrial") {
-                document.getElementById("supervisor-section").classList.remove("hidden");
-                fetchSupervisorLogs();
-            } else if (role === "University") {
-                document.getElementById("lecturer-section").classList.remove("hidden");
-                fetchLecturerDashboard();
+            if (role === "Student") document.getElementById("student-section").classList.remove("hidden");
+            else if (role === "Industrial") { document.getElementById("supervisor-section").classList.remove("hidden"); fetchSupervisorLogs(); }
+            else if (role === "University") { document.getElementById("lecturer-section").classList.remove("hidden"); fetchLecturerDashboard(); }
+        }
+
+        // --- SKILLS & DRAFTS ---
+        function toggleOtherSkill() {
+            const otherCheckbox = document.getElementById('skills-other-checkbox');
+            const otherText = document.getElementById('skills-other-text');
+            if (otherCheckbox.checked) {
+                otherText.classList.remove('hidden');
+                otherText.focus();
+            } else {
+                otherText.classList.add('hidden');
+                otherText.value = ''; 
             }
         }
 
-        // --- STUDENT DRAFTS & OFFLINE QUEUE ---
+        function getFormData() {
+            let selectedSkills = Array.from(document.querySelectorAll('input[name="skills"]:checked')).map(cb => cb.value);
+            const otherCheckbox = document.getElementById('skills-other-checkbox');
+            const otherText = document.getElementById('skills-other-text');
+            if (otherCheckbox && otherCheckbox.checked && otherText.value.trim() !== '') {
+                selectedSkills.push(otherText.value.trim());
+            }
+
+            return {
+                date: document.getElementById("date").value,
+                startTime: document.getElementById("startTime").value,
+                endTime: document.getElementById("endTime").value,
+                tasks: document.getElementById("tasks").value,
+                reflection: document.getElementById("reflection").value,
+                challenges: document.getElementById("challenges").value,
+                skills: selectedSkills.join(', ') 
+            };
+        }
+
         function saveDraft() {
-            const draftData = getFormData();
-            localStorage.setItem("logDraft", JSON.stringify(draftData));
-            alert("Draft saved locally on your device.");
+            localStorage.setItem("logDraft", JSON.stringify(getFormData()));
+            alert("Draft saved locally.");
             checkExistingDrafts();
         }
 
         function checkExistingDrafts() {
-            if (localStorage.getItem("logDraft")) {
-                document.getElementById("loadDraftBtn").classList.remove('hidden');
-            } else {
-                document.getElementById("loadDraftBtn").classList.add('hidden');
-            }
+            if (localStorage.getItem("logDraft")) document.getElementById("loadDraftBtn").classList.remove('hidden');
+            else document.getElementById("loadDraftBtn").classList.add('hidden');
         }
 
         function loadDraft() {
@@ -264,36 +293,52 @@
                 document.getElementById("tasks").value = draft.tasks || "";
                 document.getElementById("reflection").value = draft.reflection || "";
                 document.getElementById("challenges").value = draft.challenges || "";
-                document.getElementById("skills").value = draft.skills || "";
-            }
-        }
+                
+                document.querySelectorAll('input[name="skills"]').forEach(cb => cb.checked = false);
+                const otherCheckbox = document.getElementById('skills-other-checkbox');
+                const otherText = document.getElementById('skills-other-text');
+                otherCheckbox.checked = false; otherText.value = ''; otherText.classList.add('hidden');
 
-        function getFormData() {
-            return {
-                date: document.getElementById("date").value,
-                startTime: document.getElementById("startTime").value,
-                endTime: document.getElementById("endTime").value,
-                tasks: document.getElementById("tasks").value,
-                reflection: document.getElementById("reflection").value,
-                challenges: document.getElementById("challenges").value,
-                skills: document.getElementById("skills").value
-            };
+                if (draft.skills) {
+                    const savedSkills = draft.skills.split(', ');
+                    let customSkills = [];
+                    savedSkills.forEach(skill => {
+                        let matched = false;
+                        document.querySelectorAll('input[name="skills"]').forEach(cb => { if (cb.value === skill) { cb.checked = true; matched = true; } });
+                        if (!matched && skill.trim() !== "") customSkills.push(skill);
+                    });
+                    if (customSkills.length > 0) {
+                        otherCheckbox.checked = true;
+                        otherText.classList.remove('hidden');
+                        otherText.value = customSkills.join(', ');
+                    }
+                }
+            }
         }
 
         async function submitLog(e) {
             e.preventDefault();
+
+            // Validation for the "Other" text box
+            const otherCheckbox = document.getElementById('skills-other-checkbox');
+            const otherText = document.getElementById('skills-other-text');
+            if (otherCheckbox && otherCheckbox.checked && otherText.value.trim() === '') {
+                alert("Please type your custom skill, or uncheck the 'Other' box before submitting.");
+                otherText.focus(); 
+                return; 
+            }
+
             const logData = getFormData();
             const token = localStorage.getItem("sessionToken");
 
-            // Handle Offline Submission
             if (!navigator.onLine) {
                 let pendingLogs = JSON.parse(localStorage.getItem("pendingLogs")) || [];
                 pendingLogs.push({ token: token, logData: logData });
                 localStorage.setItem("pendingLogs", JSON.stringify(pendingLogs));
-                document.getElementById("form-msg").innerText = "You are offline. Log saved to outbox and will auto-sync when connected.";
+                document.getElementById("form-msg").innerText = "Offline. Log saved to outbox (auto-syncing when connected).";
                 document.getElementById("logForm").reset();
-                localStorage.removeItem("logDraft"); 
-                checkExistingDrafts();
+                toggleOtherSkill(); 
+                localStorage.removeItem("logDraft"); checkExistingDrafts();
                 return;
             }
 
@@ -305,33 +350,25 @@
                 if (res.success) {
                     document.getElementById("form-msg").innerText = "Log successfully submitted!";
                     document.getElementById("logForm").reset();
-                    localStorage.removeItem("logDraft");
-                    checkExistingDrafts();
+                    toggleOtherSkill(); 
+                    localStorage.removeItem("logDraft"); checkExistingDrafts();
                     setTimeout(() => document.getElementById("form-msg").innerText = "", 3000);
-                } else {
-                    alert(res.message);
-                }
-            } catch(err) {
-                alert("Failed to submit. Check your connection.");
-            }
+                } else alert(res.message);
+            } catch(err) { alert("Failed to submit. Check your connection."); }
             btn.innerText = "Submit Log";
         }
 
         async function syncPendingLogs() {
             let pendingLogs = JSON.parse(localStorage.getItem("pendingLogs")) || [];
             if (pendingLogs.length === 0) return;
-
             document.getElementById("form-msg").innerText = `Syncing ${pendingLogs.length} offline logs...`;
             let successfulSyncs = [];
-
             for (let i = 0; i < pendingLogs.length; i++) {
-                const item = pendingLogs[i];
                 try {
-                    const res = await apiCall({ action: "submitLog", token: item.token, logData: item.logData });
+                    const res = await apiCall({ action: "submitLog", token: pendingLogs[i].token, logData: pendingLogs[i].logData });
                     if (res.success) successfulSyncs.push(i);
-                } catch (error) { console.error("Sync failed", error); }
+                } catch (error) { console.error(error); }
             }
-
             if (successfulSyncs.length > 0) {
                 pendingLogs = pendingLogs.filter((_, index) => !successfulSyncs.includes(index));
                 localStorage.setItem("pendingLogs", JSON.stringify(pendingLogs));
@@ -339,29 +376,18 @@
                 setTimeout(() => document.getElementById("form-msg").innerText = "", 3000);
             }
         }
-
         function checkPendingSync() { if (navigator.onLine) syncPendingLogs(); }
 
-        // --- SUPERVISOR FUNCTIONS ---
+        // --- SUPERVISOR / LECTURER DASHBOARDS ---
         async function fetchSupervisorLogs() {
             const res = await apiCall({ action: "getSupervisorLogs", token: localStorage.getItem("sessionToken") });
             const tbody = document.getElementById("logs-table-body");
             tbody.innerHTML = "";
-
             if (res.success && res.logs.length > 0) {
                 currentLogs = res.logs;
                 res.logs.forEach(log => {
                     let statusColor = log.status === 'Approved' ? 'text-green-600' : (log.status === 'Submitted' ? 'text-blue-600' : 'text-red-600');
-                    tbody.innerHTML += `
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="p-2">${log.date}</td>
-                            <td class="p-2">${log.studentEmail}</td>
-                            <td class="p-2 font-bold ${statusColor}">${log.status}</td>
-                            <td class="p-2">
-                                <button onclick="openModal('${log.logId}')" class="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-black">Review</button>
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2">${log.date}</td><td class="p-2"><span class="font-semibold">${log.studentName}</span><br><span class="text-xs text-gray-500">${log.studentEmail}</span></td><td class="p-2 font-bold ${statusColor}">${log.status}</td><td class="p-2"><button onclick="openModal('${log.logId}')" class="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-black">Review</button></td></tr>`;
                 });
             } else tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center">No logs found.</td></tr>`;
         }
@@ -369,110 +395,67 @@
         function openModal(logId) {
             activeLogId = logId;
             const log = currentLogs.find(l => l.logId === logId);
-            document.getElementById("modal-content").innerHTML = `
-                <p><strong>Student:</strong> ${log.studentEmail}</p>
-                <p><strong>Tasks:</strong><br>${log.tasks}</p>
-                <p><strong>Reflection:</strong><br>${log.reflection}</p>
-                <p><strong>Challenges:</strong><br>${log.challenges}</p>
-                <p><strong>Skills:</strong><br>${log.skills}</p>
-            `;
+            document.getElementById("modal-content").innerHTML = `<p><strong>Student:</strong> ${log.studentName} (${log.studentEmail})</p><p><strong>Tasks:</strong><br>${log.tasks}</p><p><strong>Reflection:</strong><br>${log.reflection}</p><p><strong>Challenges:</strong><br>${log.challenges}</p><p><strong>Skills:</strong><br>${log.skills}</p>`;
             document.getElementById("supervisor-feedback").value = log.feedback || "";
             document.getElementById("review-modal").classList.remove("hidden");
         }
-
         function closeModal() { document.getElementById("review-modal").classList.add("hidden"); activeLogId = null; }
 
         async function processReview(status) {
             const feedback = document.getElementById("supervisor-feedback").value.trim();
-            if ((status === 'Revision Required' || status === 'Rejected') && !feedback) {
-                return alert("Feedback is mandatory for revisions or rejections.");
-            }
-            const res = await apiCall({ 
-                action: "updateLogStatus", 
-                token: localStorage.getItem("sessionToken"), 
-                logId: activeLogId, status: status, feedback: feedback 
-            });
-            if (res.success) {
-                alert(`Log marked as ${status}. Student notified.`);
-                closeModal(); fetchSupervisorLogs(); 
-            } else alert(res.message);
+            if ((status === 'Revision Required' || status === 'Rejected') && !feedback) return alert("Feedback is mandatory for revisions/rejections.");
+            const res = await apiCall({ action: "updateLogStatus", token: localStorage.getItem("sessionToken"), logId: activeLogId, status: status, feedback: feedback });
+            if (res.success) { alert(`Log marked as ${status}. Student notified.`); closeModal(); fetchSupervisorLogs(); } else alert(res.message);
         }
 
-        // --- LECTURER FUNCTIONS ---
         async function fetchLecturerDashboard() {
             const res = await apiCall({ action: "getLecturerDashboard", token: localStorage.getItem("sessionToken") });
             const tbody = document.getElementById("lecturer-table-body");
             const summaryDiv = document.getElementById("lecturer-summary");
             tbody.innerHTML = ""; summaryDiv.innerHTML = "";
-
             if (res.success && res.progressData.length > 0) {
                 let cohortTotal = 0, cohortApproved = 0, cohortPending = 0;
                 res.progressData.forEach(student => {
                     cohortTotal += student.total; cohortApproved += student.approved; cohortPending += student.pending;
-                    tbody.innerHTML += `
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="p-2 font-medium">${student.studentEmail}</td>
-                            <td class="p-2 text-center">${student.total}</td>
-                            <td class="p-2 text-center text-green-600 font-bold">${student.approved}</td>
-                            <td class="p-2 text-center text-blue-600 font-bold">${student.pending}</td>
-                            <td class="p-2 text-center text-yellow-600 font-bold">${student.revisions}</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2"><span class="font-medium">${student.studentName}</span><br><span class="text-xs text-gray-500">${student.studentEmail}</span></td><td class="p-2 text-center">${student.total}</td><td class="p-2 text-center text-green-600 font-bold">${student.approved}</td><td class="p-2 text-center text-blue-600 font-bold">${student.pending}</td><td class="p-2 text-center text-yellow-600 font-bold">${student.revisions}</td></tr>`;
                 });
-                summaryDiv.innerHTML = `
-                    <div class="bg-gray-50 p-4 border rounded shadow-sm text-center">
-                        <p class="text-sm text-gray-500">Assigned Students</p>
-                        <p class="text-2xl font-bold">${res.progressData.length}</p>
-                    </div>
-                    <div class="bg-blue-50 p-4 border rounded shadow-sm text-center">
-                        <p class="text-sm text-blue-600">Total Logs Submitted</p>
-                        <p class="text-2xl font-bold text-blue-700">${cohortTotal}</p>
-                    </div>
-                    <div class="bg-green-50 p-4 border rounded shadow-sm text-center">
-                        <p class="text-sm text-green-600">Overall Approved</p>
-                        <p class="text-2xl font-bold text-green-700">${cohortApproved}</p>
-                    </div>
-                `;
+                summaryDiv.innerHTML = `<div class="bg-gray-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-gray-500">Assigned Students</p><p class="text-2xl font-bold">${res.progressData.length}</p></div><div class="bg-blue-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-blue-600">Total Logs Submitted</p><p class="text-2xl font-bold text-blue-700">${cohortTotal}</p></div><div class="bg-green-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-green-600">Overall Approved</p><p class="text-2xl font-bold text-green-700">${cohortApproved}</p></div>`;
             } else tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center">No student data found.</td></tr>`;
         }
 
-        // --- FINAL REPORT (PDF) GENERATION ---
+        // --- PDF GENERATION ---
         async function generateReport(targetEmail = null) {
             const emailToFetch = targetEmail || localStorage.getItem("userEmail") || document.getElementById("email").value;
-            const token = localStorage.getItem("sessionToken");
             alert("Generating report... This may take a few seconds.");
-
-            const res = await apiCall({ action: "getStudentReport", token: token, studentEmail: emailToFetch });
+            const res = await apiCall({ action: "getStudentReport", token: localStorage.getItem("sessionToken"), studentEmail: emailToFetch });
             if (res.success) {
                 if (res.logs.length === 0) return alert("No approved logs found to print.");
-                buildAndPrintPDF(emailToFetch, res.logs);
+                buildAndPrintPDF(emailToFetch, res.studentName, res.matricNumber, res.supervisorName, res.companyName, res.lecturerName, res.logs);
             } else alert(res.message);
         }
 
-        function buildAndPrintPDF(studentEmail, logs) {
+        function buildAndPrintPDF(studentEmail, studentName, matricNumber, supervisorName, companyName, lecturerName, logs) {
             let printContent = `
                 <div style="font-family: Arial, sans-serif; padding: 40px; color: #333;">
-                    <h1 style="text-align: center; color: #1a56db;">Final Internship e-Logbook</h1>
-                    <h3 style="text-align: center; margin-bottom: 40px;">Student: ${studentEmail}</h3>
-            `;
+                    <h1 style="text-align: center; color: #1a56db; margin-bottom: 10px;">Final Internship e-Logbook</h1>
+                    <div style="display: flex; justify-content: space-between; background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 40px; font-size: 1.05em;">
+                        <div style="flex: 1;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">Student Details</h3><p style="margin: 5px 0;"><strong>Name:</strong> ${studentName}</p><p style="margin: 5px 0;"><strong>Matric No:</strong> ${matricNumber}</p><p style="margin: 5px 0; color: #6b7280; font-size: 0.9em;">${studentEmail}</p></div>
+                        <div style="flex: 1; text-align: center; border-left: 1px solid #d1d5db; border-right: 1px solid #d1d5db; padding: 0 15px;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">University Details</h3><p style="margin: 5px 0;"><strong>Lecturer:</strong> ${lecturerName}</p></div>
+                        <div style="flex: 1; text-align: right;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">Placement Details</h3><p style="margin: 5px 0;"><strong>Company:</strong> ${companyName}</p><p style="margin: 5px 0;"><strong>Industry Sup.:</strong> ${supervisorName}</p></div>
+                    </div>`;
             logs.forEach(log => {
                 printContent += `
                     <div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px; page-break-inside: avoid;">
-                        <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
-                            <strong>Date:</strong> ${log.date} | <strong>Hours:</strong> ${log.hours}
-                        </div>
+                        <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;"><strong>Date:</strong> ${log.date} | <strong>Hours:</strong> ${log.hours}</div>
                         <p><strong>Duties & Tasks:</strong><br>${log.tasks.replace(/\n/g, '<br>')}</p>
                         <p><strong>Learning Reflection:</strong><br>${log.reflection.replace(/\n/g, '<br>')}</p>
                         <p><strong>Skills Developed:</strong><br>${log.skills.replace(/\n/g, '<br>')}</p>
-                        <div style="background-color: #f9f9f9; padding: 10px; margin-top: 15px; border-left: 4px solid #10b981;">
-                            <strong>Supervisor Feedback:</strong><br>${log.feedback || "Approved without comment."}
-                        </div>
-                    </div>
-                `;
+                        <div style="background-color: #f9f9f9; padding: 10px; margin-top: 15px; border-left: 4px solid #10b981;"><strong>Supervisor Feedback (${supervisorName}):</strong><br>${log.feedback || "Approved without comment."}</div>
+                    </div>`;
             });
             printContent += `</div>`;
             const printWindow = window.open('', '_blank', 'width=800,height=900');
-            printWindow.document.write(`<html><head><title>e-Logbook - ${studentEmail}</title></head><body>${printContent}</body></html>`);
+            printWindow.document.write(`<html><head><title>e-Logbook - ${studentName}</title></head><body>${printContent}</body></html>`);
             printWindow.document.close();
             setTimeout(() => printWindow.print(), 500);
         }
