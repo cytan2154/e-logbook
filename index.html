@@ -426,7 +426,7 @@
         // --- PDF GENERATION ---
         async function generateReport(targetEmail = null) {
             const emailToFetch = targetEmail || localStorage.getItem("userEmail") || document.getElementById("email").value;
-            alert("Generating report... This may take a few seconds.");
+            alert("Generating report... This may take a few seconds. Please click “OK” and ensure that pop-ups are enabled in your browser.");
             const res = await apiCall({ action: "getStudentReport", token: localStorage.getItem("sessionToken"), studentEmail: emailToFetch });
             if (res.success) {
                 if (res.logs.length === 0) return alert("No approved logs found to print.");
