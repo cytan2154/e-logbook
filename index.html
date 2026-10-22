@@ -85,11 +85,29 @@
                 </div>
                 
                 <div class="flex gap-2 mt-2">
-                    <button type="button" onclick="saveDraft()" class="flex-1 bg-gray-500 text-white p-3 rounded font-bold hover:bg-gray-600">Save Draft</button>
+                    <button type="button" id="draftBtn" onclick="saveDraft()" class="flex-1 bg-gray-500 text-white p-3 rounded font-bold hover:bg-gray-600">Save Draft</button>
                     <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700">Submit Log</button>
+                    <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden flex-1 bg-gray-400 text-white p-3 rounded font-bold hover:bg-gray-500">Cancel Edit</button>
                 </div>
             </form>
             <p id="form-msg" class="mt-4 text-center font-semibold text-green-600"></p>
+
+            <h3 class="text-lg font-bold mt-10 mb-4 border-b pb-2">My Log History</h3>
+            <div class="overflow-x-auto w-full mb-6 border rounded-lg">
+                <table class="w-full text-left border-collapse min-w-max">
+                    <thead>
+                        <tr class="bg-gray-200 text-sm">
+                            <th class="p-2 border whitespace-nowrap">Date</th>
+                            <th class="p-2 border whitespace-nowrap">Status</th>
+                            <th class="p-2 border whitespace-nowrap min-w-[200px]">Feedback</th>
+                            <th class="p-2 border whitespace-nowrap text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-logs-body" class="text-sm">
+                        <tr><td colspan="4" class="p-4 text-center text-gray-500">Loading history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- ================= INDUSTRIAL SUPERVISOR DASHBOARD ================= -->
@@ -131,10 +149,11 @@
                             <th class="p-2 border text-center text-green-600 whitespace-nowrap">Approved</th>
                             <th class="p-2 border text-center text-blue-600 whitespace-nowrap">Pending</th>
                             <th class="p-2 border text-center text-yellow-600 whitespace-nowrap">Revisions</th>
+                            <th class="p-2 border text-center whitespace-nowrap">Action</th>
                         </tr>
                     </thead>
                     <tbody id="lecturer-table-body" class="text-sm">
-                        <tr><td colspan="5" class="p-4 text-center text-gray-500">Loading student data...</td></tr>
+                        <tr><td colspan="6" class="p-4 text-center text-gray-500">Loading student data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -162,16 +181,30 @@
 
     <!-- ================= SCRIPT LOGIC ================= -->
     <script>
+        // Make sure to paste your active GAS Web App URL here!
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzoOrQuFPz1SCH1fu5kvhwyt3Njs0WgzToGwKN7wtmN-Jl6mRTxpB_fMLkmclwq5eaQlg/exec"; 
         
         let currentLogs = [];
         let activeLogId = null;
+        let editingLogId = null; // Used to track if the student is revising a log
 
+        // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)));
         }
-        window.addEventListener('load', () => { updateOnlineStatus(); checkPendingSync(); checkExistingDrafts(); if(localStorage.getItem("sessionToken")) showDashboard(localStorage.getItem("userRole")); });
-        window.addEventListener('online', () => { updateOnlineStatus(); syncPendingLogs(); });
+
+        window.addEventListener('load', () => { 
+            updateOnlineStatus(); 
+            checkPendingSync(); 
+            checkExistingDrafts(); 
+            if(localStorage.getItem("sessionToken")) showDashboard(localStorage.getItem("userRole")); 
+        });
+        
+        window.addEventListener('online', () => { 
+            updateOnlineStatus(); 
+            syncPendingLogs(); 
+        });
+        
         window.addEventListener('offline', updateOnlineStatus);
 
         function updateOnlineStatus() {
@@ -179,7 +212,7 @@
             const submitBtn = document.getElementById('submitBtn');
             if (navigator.onLine) {
                 statusDiv.classList.add('hidden');
-                if(submitBtn) submitBtn.innerText = "Submit Log";
+                if(submitBtn) submitBtn.innerText = editingLogId ? "Resubmit Log" : "Submit Log";
             } else {
                 statusDiv.classList.remove('hidden');
                 if(submitBtn) submitBtn.innerText = "Save to Outbox (Offline)";
@@ -208,20 +241,30 @@
             const email = document.getElementById("email").value;
             const otp = document.getElementById("otp").value;
             document.getElementById("login-msg").innerText = "Verifying...";
-            const res = await apiCall({ action: "verifyOTP", email: email, otp: otp });
-            if (res.success) {
-                localStorage.setItem("sessionToken", res.token);
-                localStorage.setItem("userRole", res.role);
-                localStorage.setItem("userEmail", email);
-                showDashboard(res.role);
-            } else document.getElementById("login-msg").innerText = res.message;
+            try {
+                const res = await apiCall({ action: "verifyOTP", email: email, otp: otp });
+                if (res.success) {
+                    localStorage.setItem("sessionToken", res.token);
+                    localStorage.setItem("userRole", res.role);
+                    localStorage.setItem("userEmail", email);
+                    showDashboard(res.role);
+                } else {
+                    document.getElementById("login-msg").innerText = res.message;
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById("login-msg").innerText = "Network error: Make sure your GAS_URL is correct and deployed to 'Anyone'.";
+            }
         }
 
         function logout() { localStorage.clear(); location.reload(); }
 
         function showDashboard(role) {
             document.getElementById("login-section").classList.add("hidden");
-            if (role === "Student") document.getElementById("student-section").classList.remove("hidden");
+            if (role === "Student") {
+                document.getElementById("student-section").classList.remove("hidden");
+                fetchStudentLogs(); 
+            }
             else if (role === "Industrial") { document.getElementById("supervisor-section").classList.remove("hidden"); fetchSupervisorLogs(); }
             else if (role === "University") { document.getElementById("lecturer-section").classList.remove("hidden"); fetchLecturerDashboard(); }
         }
@@ -300,6 +343,88 @@
             }
         }
 
+        async function fetchStudentLogs() {
+            const res = await apiCall({ action: "getStudentLogs", token: localStorage.getItem("sessionToken") });
+            const tbody = document.getElementById("student-logs-body");
+            tbody.innerHTML = "";
+            if (res.success && res.logs.length > 0) {
+                currentLogs = res.logs;
+                res.logs.forEach(log => {
+                    let statusColor = "text-gray-600";
+                    if (log.status === 'Approved') statusColor = 'text-green-600';
+                    else if (log.status === 'Submitted') statusColor = 'text-blue-600';
+                    else if (log.status === 'Revision Required') statusColor = 'text-yellow-600';
+                    else if (log.status === 'Rejected') statusColor = 'text-red-600';
+
+                    let actionBtn = `<span class="text-gray-400 text-xs">Locked</span>`;
+                    if (log.status === 'Revision Required') {
+                        actionBtn = `<button type="button" onclick="editLog('${log.logId}')" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">Revise</button>`;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 whitespace-nowrap">${log.displayDateStr}</td>
+                            <td class="p-2 font-bold ${statusColor} whitespace-nowrap">${log.status}</td>
+                            <td class="p-2 text-xs text-gray-600 whitespace-normal break-words">${log.feedback || '-'}</td>
+                            <td class="p-2 whitespace-nowrap text-center">${actionBtn}</td>
+                        </tr>`;
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No logs submitted yet.</td></tr>`;
+            }
+        }
+
+        function editLog(logId) {
+            const log = currentLogs.find(l => l.logId === logId);
+            if (!log) return;
+            
+            editingLogId = logId; 
+            
+            document.getElementById("date").value = log.date;
+            document.getElementById("startTime").value = log.startTime;
+            document.getElementById("endTime").value = log.endTime;
+            document.getElementById("tasks").value = log.tasks;
+            document.getElementById("reflection").value = log.reflection;
+            document.getElementById("challenges").value = log.challenges;
+            
+            document.querySelectorAll('input[name="skills"]').forEach(cb => cb.checked = false);
+            const otherCheckbox = document.getElementById('skills-other-checkbox');
+            const otherText = document.getElementById('skills-other-text');
+            otherCheckbox.checked = false; otherText.value = ''; otherText.classList.add('hidden');
+
+            if (log.skills) {
+                const savedSkills = log.skills.split(', ');
+                let customSkills = [];
+                savedSkills.forEach(skill => {
+                    let matched = false;
+                    document.querySelectorAll('input[name="skills"]').forEach(cb => { if (cb.value === skill) { cb.checked = true; matched = true; } });
+                    if (!matched && skill.trim() !== "") customSkills.push(skill);
+                });
+                if (customSkills.length > 0) {
+                    otherCheckbox.checked = true;
+                    otherText.classList.remove('hidden');
+                    otherText.value = customSkills.join(', ');
+                }
+            }
+
+            document.getElementById("submitBtn").innerText = "Resubmit Log";
+            document.getElementById("draftBtn").classList.add("hidden");
+            document.getElementById("cancelEditBtn").classList.remove("hidden");
+            document.getElementById("form-msg").innerText = "Editing previous log. Submit to save revisions.";
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingLogId = null;
+            document.getElementById("logForm").reset();
+            toggleOtherSkill();
+            document.getElementById("submitBtn").innerText = "Submit Log";
+            document.getElementById("draftBtn").classList.remove("hidden");
+            document.getElementById("cancelEditBtn").classList.add("hidden");
+            document.getElementById("form-msg").innerText = "";
+        }
+
         async function submitLog(e) {
             e.preventDefault();
 
@@ -316,11 +441,10 @@
 
             if (!navigator.onLine) {
                 let pendingLogs = JSON.parse(localStorage.getItem("pendingLogs")) || [];
-                pendingLogs.push({ token: token, logData: logData });
+                pendingLogs.push({ token: token, logData: logData, logId: editingLogId });
                 localStorage.setItem("pendingLogs", JSON.stringify(pendingLogs));
                 document.getElementById("form-msg").innerText = "Offline. Log saved to outbox (auto-syncing when connected).";
-                document.getElementById("logForm").reset();
-                toggleOtherSkill(); 
+                cancelEdit(); 
                 localStorage.removeItem("logDraft"); checkExistingDrafts();
                 return;
             }
@@ -329,16 +453,17 @@
             btn.innerText = "Submitting...";
 
             try {
-                const res = await apiCall({ action: "submitLog", token: token, logData: logData });
+                const res = await apiCall({ action: "submitLog", token: token, logData: logData, logId: editingLogId });
                 if (res.success) {
-                    document.getElementById("form-msg").innerText = "Log successfully submitted!";
-                    document.getElementById("logForm").reset();
-                    toggleOtherSkill(); 
+                    document.getElementById("form-msg").innerText = res.message || "Log successfully submitted!";
+                    cancelEdit(); 
                     localStorage.removeItem("logDraft"); checkExistingDrafts();
+                    fetchStudentLogs(); 
                     setTimeout(() => document.getElementById("form-msg").innerText = "", 3000);
                 } else alert(res.message);
             } catch(err) { alert("Failed to submit. Check your connection."); }
-            btn.innerText = "Submit Log";
+            
+            btn.innerText = editingLogId ? "Resubmit Log" : "Submit Log";
         }
 
         async function syncPendingLogs() {
@@ -348,7 +473,7 @@
             let successfulSyncs = [];
             for (let i = 0; i < pendingLogs.length; i++) {
                 try {
-                    const res = await apiCall({ action: "submitLog", token: pendingLogs[i].token, logData: pendingLogs[i].logData });
+                    const res = await apiCall({ action: "submitLog", token: pendingLogs[i].token, logData: pendingLogs[i].logData, logId: pendingLogs[i].logId });
                     if (res.success) successfulSyncs.push(i);
                 } catch (error) { console.error(error); }
             }
@@ -356,6 +481,7 @@
                 pendingLogs = pendingLogs.filter((_, index) => !successfulSyncs.includes(index));
                 localStorage.setItem("pendingLogs", JSON.stringify(pendingLogs));
                 document.getElementById("form-msg").innerText = "Offline logs successfully synced!";
+                fetchStudentLogs(); 
                 setTimeout(() => document.getElementById("form-msg").innerText = "", 3000);
             }
         }
@@ -368,7 +494,7 @@
             if (res.success && res.logs.length > 0) {
                 currentLogs = res.logs;
                 res.logs.forEach(log => {
-                    let statusColor = log.status === 'Approved' ? 'text-green-600' : (log.status === 'Submitted' ? 'text-blue-600' : 'text-red-600');
+                    let statusColor = log.status === 'Approved' ? 'text-green-600' : (log.status === 'Submitted' ? 'text-blue-600' : (log.status === 'Revision Required' ? 'text-yellow-600' : 'text-red-600'));
                     tbody.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2 whitespace-nowrap">${log.date}</td><td class="p-2 whitespace-nowrap"><span class="font-semibold">${log.studentName}</span><br><span class="text-xs text-gray-500">${log.studentEmail}</span></td><td class="p-2 font-bold ${statusColor} whitespace-nowrap">${log.status}</td><td class="p-2 whitespace-nowrap"><button onclick="openModal('${log.logId}')" class="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-black">Review</button></td></tr>`;
                 });
             } else tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center">No logs found.</td></tr>`;
@@ -399,14 +525,29 @@
                 let cohortTotal = 0, cohortApproved = 0, cohortPending = 0;
                 res.progressData.forEach(student => {
                     cohortTotal += student.total; cohortApproved += student.approved; cohortPending += student.pending;
-                    tbody.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2 whitespace-nowrap"><span class="font-medium">${student.studentName}</span><br><span class="text-xs text-gray-500">${student.studentEmail}</span></td><td class="p-2 text-center whitespace-nowrap">${student.total}</td><td class="p-2 text-center text-green-600 font-bold whitespace-nowrap">${student.approved}</td><td class="p-2 text-center text-blue-600 font-bold whitespace-nowrap">${student.pending}</td><td class="p-2 text-center text-yellow-600 font-bold whitespace-nowrap">${student.revisions}</td></tr>`;
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 whitespace-nowrap">
+                                <span class="font-medium">${student.studentName}</span><br>
+                                <span class="text-xs text-gray-500">${student.studentEmail}</span>
+                            </td>
+                            <td class="p-2 text-center whitespace-nowrap">${student.total}</td>
+                            <td class="p-2 text-center text-green-600 font-bold whitespace-nowrap">${student.approved}</td>
+                            <td class="p-2 text-center text-blue-600 font-bold whitespace-nowrap">${student.pending}</td>
+                            <td class="p-2 text-center text-yellow-600 font-bold whitespace-nowrap">${student.revisions}</td>
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <button onclick="generateReport('${student.studentEmail}')" class="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-black">PDF</button>
+                            </td>
+                        </tr>`;
                 });
                 summaryDiv.innerHTML = `<div class="bg-gray-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-gray-500">Assigned Students</p><p class="text-2xl font-bold">${res.progressData.length}</p></div><div class="bg-blue-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-blue-600">Total Logs Submitted</p><p class="text-2xl font-bold text-blue-700">${cohortTotal}</p></div><div class="bg-green-50 p-4 border rounded shadow-sm text-center"><p class="text-sm text-green-600">Overall Approved</p><p class="text-2xl font-bold text-green-700">${cohortApproved}</p></div>`;
-            } else tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center">No student data found.</td></tr>`;
+            } else tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center">No student data found.</td></tr>`;
         }
 
         async function generateReport(targetEmail = null) {
-            const emailToFetch = targetEmail || localStorage.getItem("userEmail") || document.getElementById("email").value;
+            const emailToFetch = targetEmail || localStorage.getItem("userEmail");
+            if (!emailToFetch) return alert("Error: Could not identify student email.");
+            
             alert("Generating report... This may take a few seconds.");
             const res = await apiCall({ action: "getStudentReport", token: localStorage.getItem("sessionToken"), studentEmail: emailToFetch });
             if (res.success) {
