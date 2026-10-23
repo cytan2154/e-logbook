@@ -558,12 +558,26 @@
 
         function buildAndPrintPDF(studentEmail, studentName, matricNumber, supervisorName, companyName, lecturerName, logs) {
             let printContent = `
-                <div style="font-family: Arial, sans-serif; padding: 40px; color: #333;">
-                    <h1 style="text-align: center; color: #1a56db; margin-bottom: 10px;">Final Internship e-Logbook</h1>
-                    <div style="display: flex; justify-content: space-between; background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 40px; font-size: 1.05em;">
-                        <div style="flex: 1;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">Student Details</h3><p style="margin: 5px 0;"><strong>Name:</strong> ${studentName}</p><p style="margin: 5px 0;"><strong>Matric No:</strong> ${matricNumber}</p><p style="margin: 5px 0; color: #6b7280; font-size: 0.9em;">${studentEmail}</p></div>
-                        <div style="flex: 1; text-align: center; border-left: 1px solid #d1d5db; border-right: 1px solid #d1d5db; padding: 0 15px;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">University Details</h3><p style="margin: 5px 0;"><strong>Lecturer:</strong> ${lecturerName}</p></div>
-                        <div style="flex: 1; text-align: right;"><h3 style="margin-top: 0; margin-bottom: 10px; color: #4b5563;">Placement Details</h3><p style="margin: 5px 0;"><strong>Company:</strong> ${companyName}</p><p style="margin: 5px 0;"><strong>Industry Sup.:</strong> ${supervisorName}</p></div>
+                <div class="container">
+                    <h1>Final Internship e-Logbook</h1>
+                    
+                    <div class="details-container">
+                        <h3 class="section-title">STUDENT DETAILS:</h3>
+                        <table class="details-table">
+                            <tr><td class="label">Name</td><td class="colon">:</td><td class="value">${studentName}</td></tr>
+                            <tr><td class="label">Matric No</td><td class="colon">:</td><td class="value">${matricNumber}</td></tr>
+                        </table>
+
+                        <h3 class="section-title">PLACEMENT DETAILS:</h3>
+                        <table class="details-table">
+                            <tr><td class="label">Company</td><td class="colon">:</td><td class="value">${companyName}</td></tr>
+                            <tr><td class="label">Supervisor</td><td class="colon">:</td><td class="value">${supervisorName}</td></tr>
+                        </table>
+
+                        <h3 class="section-title">UNIVERSITY DETAILS:</h3>
+                        <table class="details-table">
+                            <tr><td class="label">Lecturer</td><td class="colon">:</td><td class="value">${lecturerName}</td></tr>
+                        </table>
                     </div>`;
             logs.forEach(log => {
                 printContent += `
@@ -577,16 +591,59 @@
             });
             // Add the Signature Section at the end
             printContent += `
-                    <div style="margin-top: 60px; page-break-inside: avoid; display: flex; justify-content: flex-end;">
-                        <div style="width: 300px; text-align: center;">
-                            <div style="border-bottom: 1px solid #000; height: 60px; margin-bottom: 10px;"></div>
-                            <p style="margin: 0; font-weight: bold; font-size: 1.1em;">${supervisorName}</p>
-                            <p style="margin: 5px 0 0 0; color: #555;">Industrial Supervisor</p>
-                            <p style="margin: 5px 0 0 0; color: #555;">${companyName}</p>
-                            <p style="margin: 5px 0 0 0; color: #777; font-size: 0.9em;">Date: ____________________</p>
+                    <div class="signature-section">
+                        <div class="signature-box">
+                            <p class="sig-label">Supervisor’s Signature & Company Stamp</p>
+                            <div class="signature-line"></div>
+                            <p class="sig-name">${supervisorName}</p>
+                            <p class="sig-company">${companyName}</p>
+                            <p class="sig-date">Date: ____________________</p>
                         </div>
                     </div>
                 </div>`;
+
+            let htmlTemplate = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>e-Logbook - ${studentName}</title>
+                    <style>
+                        /* Hides the default browser headers/footers (like about:blank and page numbers) */
+                        @page { margin: 0; size: auto; }
+                        
+                        body { margin: 20mm; font-family: Arial, sans-serif; color: #333; line-height: 1.5; }
+                        h1 { text-align: center; color: #1a56db; margin-bottom: 30px; }
+                        
+                        /* New Alignment for Header Details */
+                        .details-container { margin-bottom: 40px; font-size: 15px; }
+                        .section-title { color: #0284c7; text-transform: uppercase; margin: 25px 0 15px 0; font-size: 16px; font-weight: bold; font-family: sans-serif; }
+                        .details-table { border-collapse: collapse; margin-bottom: 15px; }
+                        .details-table td { padding: 6px 0; vertical-align: top; font-family: sans-serif; }
+                        .details-table .label { font-weight: bold; width: 130px; color: #000; }
+                        .details-table .colon { width: 25px; text-align: center; font-weight: bold; color: #000; }
+                        .details-table .value { text-align: left; color: #222; }
+                        
+                        /* Log Entries Styling */
+                        .log-entry { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px; page-break-inside: avoid; }
+                        .log-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+                        .feedback-box { background-color: #f9f9f9; padding: 12px; margin-top: 15px; border-left: 4px solid #10b981; }
+                        
+                        /* Signature Block */
+                        .signature-section { margin-top: 60px; page-break-inside: avoid; display: flex; justify-content: flex-end; }
+                        .signature-box { width: 300px; text-align: center; }
+                        .sig-label { margin: 0 0 10px 0; font-weight: bold; font-size: 0.95em; color: #333; }
+                        .signature-line { border-bottom: 1px solid #000; height: 60px; margin-bottom: 10px; }
+                        .sig-name { margin: 0; font-weight: bold; font-size: 1.1em; }
+                        .sig-title, .sig-company { margin: 5px 0 0 0; color: #555; font-size: 0.95em; }
+                        .sig-date { margin: 15px 0 0 0; color: #777; font-size: 0.9em; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    ${printContent}
+                </body>
+                </html>
+            `;
+
             const printWindow = window.open('', '_blank', 'width=800,height=900');
             printWindow.document.write(`<html><head><title>e-Logbook - ${studentName}</title></head><body>${printContent}</body></html>`);
             printWindow.document.close();
