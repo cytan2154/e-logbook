@@ -575,7 +575,18 @@
                         <div style="background-color: #f9f9f9; padding: 10px; margin-top: 15px; border-left: 4px solid #10b981;"><strong>Supervisor Feedback (${supervisorName}):</strong><br>${log.feedback || "Approved without comment."}</div>
                     </div>`;
             });
-            printContent += `</div>`;
+            // Add the Signature Section at the end
+            printContent += `
+                    <div style="margin-top: 60px; page-break-inside: avoid; display: flex; justify-content: flex-end;">
+                        <div style="width: 300px; text-align: center;">
+                            <div style="border-bottom: 1px solid #000; height: 60px; margin-bottom: 10px;"></div>
+                            <p style="margin: 0; font-weight: bold; font-size: 1.1em;">${supervisorName}</p>
+                            <p style="margin: 5px 0 0 0; color: #555;">Industrial Supervisor</p>
+                            <p style="margin: 5px 0 0 0; color: #555;">${companyName}</p>
+                            <p style="margin: 5px 0 0 0; color: #777; font-size: 0.9em;">Date: ____________________</p>
+                        </div>
+                    </div>
+                </div>`;
             const printWindow = window.open('', '_blank', 'width=800,height=900');
             printWindow.document.write(`<html><head><title>e-Logbook - ${studentName}</title></head><body>${printContent}</body></html>`);
             printWindow.document.close();
