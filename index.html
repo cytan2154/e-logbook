@@ -612,30 +612,31 @@
                         @page { margin: 0; size: auto; }
                         
                         body { margin: 20mm; font-family: Arial, sans-serif; color: #333; line-height: 1.5; }
-                        h1 { text-align: center; color: #1a56db; margin-bottom: 30px; }
+                        h1 { text-align: center; color: #1a56db; margin-bottom: 20px; font-size: 24px; }
                         
-                        /* New Alignment for Header Details */
-                        .details-container { margin-bottom: 40px; font-size: 15px; }
-                        .section-title { color: #0284c7; text-transform: uppercase; margin: 25px 0 15px 0; font-size: 16px; font-weight: bold; font-family: sans-serif; }
-                        .details-table { border-collapse: collapse; margin-bottom: 15px; }
-                        .details-table td { padding: 6px 0; vertical-align: top; font-family: sans-serif; }
+                        /* New Alignment for Header Details (No Spacing) */
+                        .details-container { margin-bottom: 30px; font-size: 15px; }
+                        .section-title { color: #0284c7; text-transform: uppercase; margin: 10px 0 0 0; font-size: 15px; font-weight: bold; font-family: sans-serif; }
+                        .details-table { border-collapse: collapse; margin-bottom: 0px; }
+                        .details-table td { padding: 2px 0; vertical-align: top; font-family: sans-serif; }
                         .details-table .label { font-weight: bold; width: 130px; color: #000; }
-                        .details-table .colon { width: 25px; text-align: center; font-weight: bold; color: #000; }
+                        .details-table .colon { width: 25px; text-align: left; font-weight: bold; color: #000; }
                         .details-table .value { text-align: left; color: #222; }
                         
                         /* Log Entries Styling */
-                        .log-entry { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 8px; page-break-inside: avoid; }
-                        .log-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+                        .log-entry { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 8px; page-break-inside: avoid; }
+                        .log-header { border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 10px; }
                         .feedback-box { background-color: #f9f9f9; padding: 12px; margin-top: 15px; border-left: 4px solid #10b981; }
+                        p { margin-top: 5px; margin-bottom: 10px; }
                         
-                        /* Signature Block */
-                        .signature-section { margin-top: 60px; page-break-inside: avoid; display: flex; justify-content: flex-end; }
+                        /* Signature Block - Right Aligned container, Center Aligned text */
+                        .signature-section { margin-top: 40px; page-break-inside: avoid; display: flex; justify-content: flex-end; }
                         .signature-box { width: 300px; text-align: center; }
-                        .sig-label { margin: 0 0 10px 0; font-weight: bold; font-size: 0.95em; color: #333; }
-                        .signature-line { border-bottom: 1px solid #000; height: 60px; margin-bottom: 10px; }
-                        .sig-name { margin: 0; font-weight: bold; font-size: 1.1em; }
-                        .sig-title, .sig-company { margin: 5px 0 0 0; color: #555; font-size: 0.95em; }
-                        .sig-date { margin: 15px 0 0 0; color: #777; font-size: 0.9em; text-align: center; }
+                        .sig-label { margin: 0; font-weight: bold; font-size: 0.95em; color: #333; }
+                        .signature-line { border-bottom: 1px solid #000; height: 50px; margin-bottom: 5px; width: 100%; }
+                        .sig-name { margin: 0; font-weight: bold; font-size: 1.1em; color: #000; }
+                        .sig-title, .sig-company { margin: 2px 0 0 0; color: #555; font-size: 0.95em; }
+                        .sig-date { margin: 15px 0 0 0; color: #333; font-size: 0.95em; }
                     </style>
                 </head>
                 <body>
@@ -643,6 +644,7 @@
                 </body>
                 </html>
             `;
+
 
             const printWindow = window.open('', '_blank', 'width=800,height=900');
             printWindow.document.write(`<html><head><title>e-Logbook - ${studentName}</title></head><body>${printContent}</body></html>`);
